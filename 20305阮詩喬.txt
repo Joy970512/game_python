@@ -1,0 +1,162 @@
+import pygame
+import random
+
+pygame.init()
+
+# 設定螢幕大小
+screen_width = 600
+screen_height = 400
+screen = pygame.display.set_mode((screen_width, screen_height))
+pygame.display.set_caption('Snake Game')
+
+# 顏色定義
+white = (255, 255, 255)
+black = (0, 0, 0)
+red = (213, 50, 80)
+green = (0, 255, 0)
+yellow = (255, 255, 0)
+
+# 蛇的尺寸和速度
+block_size = 10
+snake_speed = 15
+
+# 字體設置
+font_style = pygame.font.SysFont(None, 30)
+score_font = pygame.font.SysFont(None, 35)
+
+def your_score(score):
+    value = score_font.render("Score: " + str(score), True, black)
+    screen.blit(value, [0, 0])
+
+def our_snake(block_size, snake_list):
+    for x in snake_list:
+        pygame.draw.rect(screen, black, [x[0], x[1], block_size, block_size])
+
+def our_enemy(block_size, enemy_list):
+    for x in enemy_list:
+        pygame.draw.rect(screen, yellow, [x[0], x[1], block_size, block_size])
+
+def message(msg, color):
+    mesg = font_style.render(msg, True, color)
+    screen.blit(mesg, [screen_width / 6, screen_height / 3])
+
+def generate_food(block_size):
+    return round(random.randrange(0, screen_width - block_size) / block_size) * block_size, round(random.randrange(0, screen_height - block_size) / block_size) * block_size
+
+def gameLoop():
+    game_over = False
+    game_close = False
+
+    x1, y1 = screen_width / 2, screen_height / 2
+    x1_change, y1_change = 0, 0
+
+    snake_List = []
+    length_of_snake = 1
+
+    # 初始敵人設定（三個敵人）
+    enemies = [{"body": [generate_food(block_size)], "dir": random.choice([(block_size, 0), (-block_size, 0), (0, block_size), (0, -block_size)]), "length": 1} for _ in range(3)]
+
+    food_positions = [generate_food(block_size) for _ in range(10)]  # 生成 10 個食物
+
+    score = 0
+
+    clock = pygame.time.Clock()
+
+    while not game_over:
+
+        while game_close:
+            screen.fill(white)
+            message("You Lost! Press Q-Quit or C-Play Again", red)
+            your_score(score)
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        game_over = True
+                        game_close = False
+                    if event.key == pygame.K_c:
+                        gameLoop()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    x1_change = -block_size
+                    y1_change = 0
+                elif event.key == pygame.K_RIGHT:
+                    x1_change = block_size
+                    y1_change = 0
+                elif event.key == pygame.K_UP:
+                    x1_change = 0
+                    y1_change = -block_size
+                elif event.key == pygame.K_DOWN:
+                    x1_change = 0
+                    y1_change = block_size
+
+        x1 += x1_change
+        y1 += y1_change
+
+        # 如果蛇撞到牆壁，遊戲結束
+        if x1 >= screen_width or x1 < 0 or y1 >= screen_height or y1 < 0:
+            game_close = True
+
+        screen.fill(white)
+
+        for foodx, foody in food_positions:
+            pygame.draw.rect(screen, green, [foodx, foody, block_size, block_size])
+
+        snake_Head = [x1, y1]
+        snake_List.append(snake_Head)
+        if len(snake_List) > length_of_snake:
+            del snake_List[0]
+
+        for x in snake_List[:-1]:
+            if x == snake_Head:
+                game_close = True
+
+        # 更新和繪製所有敵人
+        for enemy in enemies:
+            if random.randint(1, 20) == 1:
+                enemy['dir'] = random.choice([(block_size, 0), (-block_size, 0), (0, block_size), (0, -block_size)])
+
+            enemy_Head = [enemy['body'][-1][0] + enemy['dir'][0], enemy['body'][-1][1] + enemy['dir'][1]]
+
+            if enemy_Head[0] < 0 or enemy_Head[0] >= screen_width or enemy_Head[1] < 0 or enemy_Head[1] >= screen_height:
+                enemy['dir'] = random.choice([(block_size, 0), (-block_size, 0), (0, block_size), (0, -block_size)])
+            else:
+                enemy['body'].append(enemy_Head)
+                if len(enemy['body']) > enemy['length']:
+                    del enemy['body'][0]
+
+            our_enemy(block_size, enemy['body'])
+
+        our_snake(block_size, snake_List)
+        your_score(score)
+        pygame.display.update()
+
+        for i, (foodx, foody) in enumerate(food_positions):
+            if x1 == foodx and y1 == foody:
+                food_positions[i] = generate_food(block_size)
+                length_of_snake += 1
+                score += 1
+
+        for enemy in enemies:
+            for i, (foodx, foody) in enumerate(food_positions):
+                if enemy['body'][-1][0] == foodx and enemy['body'][-1][1] == foody:
+                    food_positions[i] = generate_food(block_size)
+                    enemy['length'] += 1
+
+            # 檢查蛇是否碰到敵人
+            for part in enemy['body']:
+                if snake_Head == part:
+                    game_close = True
+
+        clock.tick(snake_speed)
+
+    pygame.quit()
+    quit()
+
+if __name__ == "__main__":
+    gameLoop()
